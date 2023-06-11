@@ -42,7 +42,7 @@ invalidSamples=0
 ```
 If you want to imitate [StephanShi's composer](https://github.com/SthephanShinkufag/bytebeat-composer) (or its forks), set `resample` to 48000 and `invalidSamples` to 3.
 
-Make a text file named expr.txt, and put your expression there. Now run the renderer, and a file named out.wav should appear.
+Make a text file named expr.txt, and put your expression there. Now run the renderer (with `node cabbr`), and a file named out.wav should appear.
 # How does it work?
 First, it gives each worker (the amount of which is set in the config, they are the ones actually rendering) some settings, and make them render a specific part of the expression. So if you have 4 workers, then each will render 1/4 of it. After all workers are done, it merges their parts, looks for NaN samples (if invalidSamples isnt 0), resamples the audio (if resample isnt 0 or equal to the sample rate, VERY broken with stereo enabled), and upgrades the audio to 16-bit. Lastly, it writes everything it has done into out.wav.
 # When not to use Workers
