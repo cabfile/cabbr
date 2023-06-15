@@ -1,6 +1,9 @@
 console.log('Loading...');
 var fs = require('fs');
 var ini = require('ini');
+var os = require('os');
+
+var cpuCores = os.cpus().length;
 var config = ini.parse(fs.readFileSync('./config.ini', 'utf-8'));
 
 // Get variables from ini
@@ -18,7 +21,7 @@ var skipNaNs = false;
 	upscale = parseFloat(upscale);
 	resample = parseInt(resample);
 	tLength = parseInt(tLength);
-	workers = workers=='auto'?Math.min(10,Math.ceil(seconds/15)):parseInt(workers);
+	workers = workers=='max'?(console.log('Using CPU core count: %d workers',cpuCores),cpuCores):parseInt(workers);
 	reportEvery = parseFloat(reportEvery);
 	invalidSamples = parseInt(invalidSamples);
 	bits = parseInt(bits);
@@ -58,7 +61,6 @@ async function process() {
 	var workersFinished = 0;
 	for (var i = 0; i<workers; i++) {
 		workerArray.push(new Worker('./worker',{argv:[part*i,part*(i+1),i+1],workerData:{seconds,sampleRate,reportEvery,type,expr,stereo,skipNaNs}}));
-		doneWorkers.push(0);
 		workerArray[workerArray.length-1].on('message',m=>{
 			if(typeof m === 'string') {
 				if(m.endsWith('%')) {
@@ -67,7 +69,7 @@ async function process() {
 					percents[number-1] = parseFloat(d[1].substring(0,d[1].length-1));
 					let a = 0;
 					percents.forEach(p=>a+=p/workers);
-					console.log('\x1b[2AProgress: %s %d\% \nWorkers : %s',progressBar(a),a.toFixed(1),getWorkers(doneWorkers));
+					console.log('\x1b[2AProgress: %s %d\% \nWorkers : %d/%d',progressBar(a),a.toFixed(1),workersFinished,workers);
 				} else {
 					console.log(m);
 				}
@@ -77,7 +79,7 @@ async function process() {
 		workerArray[workerArray.length-1].on('exit',()=>{
 			workersFinished++;
 			if(workersFinished == workers) {
-				console.log('\x1b[2FProgress: %s 100.0\%\nWorkers : %s',progressBar(100),getWorkers(doneWorkers))
+				console.log('\x1b[2FProgress: %s 100.0\%\nWorkers : %d/%d',progressBar(100),workersFinished,workers)
 				console.timeEnd('Processing');
 				console.log('Merging...');
 				let partCount = 0;
@@ -142,22 +144,8 @@ async function process() {
 }
 process();
 
-function convertToNumbers(...args) {
-	for(let i = 0; i < args.length; i++) {
-		args[i] = Number(args[i]);
-	}
-}
-
 function progressBar(percentage) {
 	return '\x1b[106;30m['+(''.padEnd((percentage/100)*60,'#').padEnd(60,'.').replaceAll('#','\x1b[42;32m#\x1b[0m').replaceAll('.','\x1b[41;31m.\x1b[0m'))+'\x1b[106;30m]\x1b[0m'
-}
-
-function getWorkers(array) {
-	let out = '';
-	array.forEach((elem,idx,arr)=>{
-		out+= (elem?'\x1b[32m':'\x1b[31m')+String(idx+1)+'\x1b[0m, '
-	})
-	return out.slice(0,-2);
 }
 
 function convertIt(int16,num) {

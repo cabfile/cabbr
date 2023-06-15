@@ -20,7 +20,6 @@ if(isMainThread) { // Safegaurd against running this file instead of cabbr.js
 	func(0);
 	(async()=>{
 		for (var t = range[0]; t<range[1]; t++) {
-			if(reportEvery > 0 && t%Math.round(sampleRate/reportEvery)==stereo) parentPort.postMessage(process.argv[4]+';'+((t-range[0])/(range[1]-range[0])*100)+'%');
 			var res = NaN;
 			try {
 				res = +func(Number(t))
@@ -57,6 +56,7 @@ if(isMainThread) { // Safegaurd against running this file instead of cabbr.js
 						break;
 				}
 			}
+			if(reportEvery > 0 && t%Math.round(sampleRate/reportEvery)==stereo) parentPort.postMessage(process.argv[4]+';'+((t-range[0])/(range[1]-range[0])*100)+'%');
 		}
 		parentPort.postMessage([parseInt(process.argv[4])-1,data]);
 		console.log('Worker #'+process.argv[4]+' is done!\x1b[1F');
