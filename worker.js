@@ -1,5 +1,5 @@
 const {
-	Worker, isMainThread, parentPort, workerData
+	isMainThread, parentPort, workerData
 } = require('worker_threads');
 if(isMainThread) { // Safegaurd against running this file instead of cabbr.js
 	console.log('You\'re doing it wrong: Open cabbr.js instead');
@@ -22,9 +22,9 @@ if(isMainThread) { // Safegaurd against running this file instead of cabbr.js
 		for (var t = range[0]; t<range[1]; t++) {
 			var res = NaN;
 			try {
-				res = +func(Number(t))
+				res = +func(+t)
 			} catch (error) {
-				console.log('Error: %s',error.message);
+				console.log('Error at %d: %s\x1b[1F',t,error.message);
 			}
 			if(skipNaNs && isNaN(res)) continue;
 			if(stereo) {
@@ -59,8 +59,7 @@ if(isMainThread) { // Safegaurd against running this file instead of cabbr.js
 			if(reportEvery > 0 && t%Math.round(sampleRate/reportEvery)==stereo) parentPort.postMessage(process.argv[4]+';'+((t-range[0])/(range[1]-range[0])*100)+'%');
 		}
 		parentPort.postMessage([parseInt(process.argv[4])-1,data]);
-		console.log('Worker #'+process.argv[4]+' is done!\x1b[1F');
-		parentPort.postMessage(['Done',parseInt(process.argv[4])-1])
+		console.log('Worker #'+process.argv[4]+' is done! (%s)\x1b[1F',prettyPrintSize(data.length));
 	})();
 }
 

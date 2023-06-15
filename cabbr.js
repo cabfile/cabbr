@@ -1,9 +1,7 @@
 console.log('Loading...');
 var fs = require('fs');
 var ini = require('ini');
-var os = require('os');
-
-var cpuCores = os.cpus().length;
+var cpuCores = require('os').availableParallelism();
 var config = ini.parse(fs.readFileSync('./config.ini', 'utf-8'));
 
 // Get variables from ini
@@ -51,7 +49,7 @@ if(stereo) {
 	expr = 't/=2,'+expr;
 }
 var length = tLength > 0 ? tLength : seconds*sampleRate;
-var workerArray = [], doneWorkers = [];
+var workerArray = [];
 var parts = [];
 var part = length/workers;
 var percents = [0,0,0,0];
@@ -60,26 +58,25 @@ async function process() {
 	console.time('Processing');
 	var workersFinished = 0;
 	for (var i = 0; i<workers; i++) {
-		workerArray.push(new Worker('./worker',{argv:[part*i,part*(i+1),i+1],workerData:{seconds,sampleRate,reportEvery,type,expr,stereo,skipNaNs}}));
+		workerArray.push(new Worker('./worker',{argv:[part*i,part*(i+1),i+1],workerData:{sampleRate,reportEvery,type,expr,stereo,skipNaNs}}));
 		workerArray[workerArray.length-1].on('message',m=>{
 			if(typeof m === 'string') {
 				if(m.endsWith('%')) {
 					let d = m.split(';');
 					let number = parseInt(d[0]);
 					percents[number-1] = parseFloat(d[1].substring(0,d[1].length-1));
-					let a = 0;
-					percents.forEach(p=>a+=p/workers);
-					console.log('\x1b[2AProgress: %s %d\% \nWorkers : %d/%d',progressBar(a),a.toFixed(1),workersFinished,workers);
+					let percentage = 0;
+					percents.forEach(workerPercentage=> percentage += workerPercentage/workers);
+					console.log('\x1b[2AProgress: %s %d\% \nWorkers : %d/%d',progressBar(percentage),percentage.toFixed(1),workersFinished,workers);
 				} else {
 					console.log(m);
 				}
-			} else if(m[0] === 'Done') doneWorkers[m[1]] = 1
-			  else parts[m[0]] = m[1];
+			} else parts[m[0]] = m[1];
 		});
 		workerArray[workerArray.length-1].on('exit',()=>{
 			workersFinished++;
 			if(workersFinished == workers) {
-				console.log('\x1b[2FProgress: %s 100.0\%\nWorkers : %d/%d',progressBar(100),workersFinished,workers)
+				console.log('\x1b[2FProgress: %s 100.0\%\nWorkers : %d/%d\n                                        \x1b[1F',progressBar(100),workersFinished,workers)
 				console.timeEnd('Processing');
 				console.log('Merging...');
 				let partCount = 0;
@@ -133,7 +130,7 @@ async function process() {
 						newData[o*2+1] = convertIt(the,1);
 					}
 					data = newData;
-				} else if(bits != 8) console.log('Invalid amount of bits. Defaulting to 8. (no change)');
+				} else if(bits != 8) console.log('Invalid amount of bits, defaulting to 8. (no change)');
 				console.log('Writing...');
 				var the = new pcm({channels: stereo?2:1, rate: waveResampler?resample:sampleRate, depth: bits===16?16:8});
 				var wave = the.toWav(data);
