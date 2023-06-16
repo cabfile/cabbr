@@ -1,16 +1,11 @@
 const {
-	Worker, isMainThread, parentPort, workerData
+	isMainThread, parentPort, workerData
 } = require('worker_threads');
-if(isMainThread) {
-	console.log('you are doing it wrong');
+if(isMainThread) { // Safegaurd against running this file instead of cabbr.js
+	console.log('You\'re doing it wrong: Open cabbr.js instead');
 	process.exit(0);
 } else {
-	var sampleRate = workerData.sampleRate;
-	var seconds = workerData.seconds;
-	var reportEvery = workerData.reportEvery;
-	var stereo = workerData.stereo;
-	var expr = workerData.expr;
-	var type = workerData.type;
+	var {sampleRate, reportEvery, stereo, expr, type, skipNaNs} = workerData;
 	var fakeWindow = {};
 	var mathNames = Object.getOwnPropertyNames(Math);
 	var mathProps = mathNames.map((prop) => {
@@ -25,7 +20,13 @@ if(isMainThread) {
 	func(0);
 	(async()=>{
 		for (var t = range[0]; t<range[1]; t++) {
-			var res = func(Number(t));
+			var res = NaN;
+			try {
+				res = +func(+t)
+			} catch (error) {
+				console.log('Error at %d: %s\x1b[1F',t,error.message);
+			}
+			if(skipNaNs && isNaN(res)) continue;
 			if(stereo) {
 				switch(type) {
 					case 0:
@@ -57,9 +58,8 @@ if(isMainThread) {
 			}
 			if(reportEvery > 0 && t%Math.round(sampleRate/reportEvery)==stereo) parentPort.postMessage(process.argv[4]+';'+((t-range[0])/(range[1]-range[0])*100)+'%');
 		}
-		console.log('Worker #'+process.argv[4]+' done! Transferring '+prettyPrintSize((range[1]-range[0])*(stereo+1))+' of data...');
 		parentPort.postMessage([parseInt(process.argv[4])-1,data]);
-		console.log('Data transfer from worker #'+process.argv[4]+' completed!');
+		console.log('Worker #'+process.argv[4]+' is done! (%s)\x1b[1F',prettyPrintSize(data.length));
 	})();
 }
 

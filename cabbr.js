@@ -1,14 +1,17 @@
 console.log('Loading...');
 var fs = require('fs');
 var ini = require('ini');
+var cpuCores = require('os').availableParallelism();
 var config = ini.parse(fs.readFileSync('./config.ini', 'utf-8'));
-// fuck
+
+// Get variables from ini
 var {type, stereo, seconds, sampleRate} = config.General;
 var {upscale, resample, resampleMethod, bits} = config.Quality;
 var {tLength, workers} = config.Advanced;
 var {reportEvery, invalidSamples} = config.Misc;
-// absolute fucking shit
-(()=>{
+var skipNaNs = false;
+
+(()=>{ // change variables into their proper types
 	type = parseInt(type);
 	stereo = Boolean(stereo);
 	seconds = parseFloat(seconds);
@@ -16,10 +19,11 @@ var {reportEvery, invalidSamples} = config.Misc;
 	upscale = parseFloat(upscale);
 	resample = parseInt(resample);
 	tLength = parseInt(tLength);
-	workers = parseInt(workers);
+	workers = workers=='max'?(console.log('Using CPU core count: %d workers',cpuCores),cpuCores):parseInt(workers);
 	reportEvery = parseFloat(reportEvery);
 	invalidSamples = parseInt(invalidSamples);
 	bits = parseInt(bits);
+	skipNaNs = invalidSamples == 1;
 })(); // this is so you can retract it
 var pcm = require('./pcm.js');
 const { Worker } = require('worker_threads');
@@ -50,26 +54,29 @@ var parts = [];
 var part = length/workers;
 var percents = [0,0,0,0];
 async function process() {
-	console.log('Processing...');
+	console.log('Processing...\nProgress:\nWorkers:');
 	console.time('Processing');
 	var workersFinished = 0;
 	for (var i = 0; i<workers; i++) {
-		workerArray.push(new Worker('./worker',{argv:[part*i,part*(i+1),i+1],workerData:{seconds,sampleRate,reportEvery,type,expr,stereo}}));
+		workerArray.push(new Worker('./worker',{argv:[part*i,part*(i+1),i+1],workerData:{sampleRate,reportEvery,type,expr,stereo,skipNaNs}}));
 		workerArray[workerArray.length-1].on('message',m=>{
 			if(typeof m === 'string') {
 				if(m.endsWith('%')) {
 					let d = m.split(';');
 					let number = parseInt(d[0]);
 					percents[number-1] = parseFloat(d[1].substring(0,d[1].length-1));
-					let a = 0;
-					percents.forEach(p=>a+=p/workers);
-					console.log('Done: '+a.toFixed(1)+'%');
-				} else console.log(m);
+					let percentage = 0;
+					percents.forEach(workerPercentage=> percentage += workerPercentage/workers);
+					console.log('\x1b[2AProgress: %s %d\% \nWorkers : %d/%d',progressBar(percentage),percentage.toFixed(1),workersFinished,workers);
+				} else {
+					console.log(m);
+				}
 			} else parts[m[0]] = m[1];
 		});
 		workerArray[workerArray.length-1].on('exit',()=>{
 			workersFinished++;
 			if(workersFinished == workers) {
+				console.log('\x1b[2FProgress: %s 100.0\%\nWorkers : %d/%d\n                                        \x1b[1F',progressBar(100),workersFinished,workers)
 				console.timeEnd('Processing');
 				console.log('Merging...');
 				let partCount = 0;
@@ -80,15 +87,7 @@ async function process() {
 				});
 				switch(invalidSamples) {
 					case 1:
-						let count = 0;
-						console.log('Searching for invalid samples...');
-						for(let s = 0; s < data.length; s++) {
-							if(isNaN(data[s])) {
-								data.splice(s,1);
-								count++;
-							}
-						}
-						if(count) console.log('Found '+count+' invalid sample(s).'); else console.log('Found no invalid samples.');
+						console.log("Mode 1; no invalid sample check")
 						break;
 					case 2:
 						let num = -1;
@@ -131,7 +130,7 @@ async function process() {
 						newData[o*2+1] = convertIt(the,1);
 					}
 					data = newData;
-				} else if(bits != 8) console.log('Invalid amount of bits. Defaulting to 8. (no change)');
+				} else if(bits != 8) console.log('Invalid amount of bits, defaulting to 8. (no change)');
 				console.log('Writing...');
 				var the = new pcm({channels: stereo?2:1, rate: waveResampler?resample:sampleRate, depth: bits===16?16:8});
 				var wave = the.toWav(data);
@@ -142,10 +141,8 @@ async function process() {
 }
 process();
 
-function convertToNumbers(...args) {
-	for(let i = 0; i < args.length; i++) {
-		args[i] = Number(args[i]);
-	}
+function progressBar(percentage) {
+	return '\x1b[106;30m['+(''.padEnd((percentage/100)*60,'#').padEnd(60,'.').replaceAll('#','\x1b[42;32m#\x1b[0m').replaceAll('.','\x1b[41;31m.\x1b[0m'))+'\x1b[106;30m]\x1b[0m'
 }
 
 function convertIt(int16,num) {
