@@ -1,7 +1,7 @@
 const {
 	isMainThread, parentPort, workerData
 } = require('worker_threads');
-if(isMainThread) { // Safegaurd against running this file instead of cabbr.js
+if(isMainThread) { // Safeguard against running this file instead of cabbr.js
 	console.log('You\'re doing it wrong: Open cabbr.js instead');
 	process.exit(0);
 } else {
