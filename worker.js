@@ -22,7 +22,7 @@ if(isMainThread) { // Safeguard against running this file instead of cabbr.js
 		for (var t = range[0]; t<range[1]; t++) {
 			var res = NaN;
 			try {
-				res = +func(+t)
+				res = func(+t);
 			} catch (error) {
 				console.log('Error at %d: %s\x1b[1F',t,error.message);
 			}
