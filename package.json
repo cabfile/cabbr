@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "ini": "^4.1.1",
+    "wave-resampler": "^1.0.0"
+  }
+}

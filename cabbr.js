@@ -1,15 +1,15 @@
 console.log('Loading...');
-var fs = require('fs');
-var ini = require('ini');
-var cpuCores = require('os').availableParallelism();
-var config = ini.parse(fs.readFileSync('./config.ini', 'utf-8'));
+const fs = require('fs');
+const ini = require('ini');
+const cpuCores = require('os').availableParallelism();
+const config = ini.parse(fs.readFileSync('./config.ini', 'utf-8'));
 
 // Get variables from ini
-var {type, stereo, seconds, sampleRate} = config.General;
-var {upscale, resample, resampleMethod, bits} = config.Quality;
-var {tLength, workers} = config.Advanced;
-var {reportEvery, invalidSamples} = config.Misc;
-var skipNaNs = false;
+let {type, stereo, seconds, sampleRate} = config.General;
+let {upscale, resample, resampleMethod, bits} = config.Quality;
+let {tLength, workers, autoStereo} = config.Advanced;
+let {reportEvery, invalidSamples} = config.Misc;
+let skipNaNs = false;
 
 (()=>{ // change variables into their proper types
 	type = parseInt(type);
@@ -24,17 +24,18 @@ var skipNaNs = false;
 	invalidSamples = parseInt(invalidSamples);
 	bits = parseInt(bits);
 	skipNaNs = invalidSamples == 1;
+	autoStereo = Boolean(autoStereo);
 })(); // this is so you can retract it
-var pcm = require('./pcm.js');
+const pcm = require('./pcm.js');
 const { Worker } = require('worker_threads');
-var waveResampler;
+let waveResampler;
 if(resample > 0 && resample != sampleRate) waveResampler = require('wave-resampler');
-var data = [];
-var expr = fs.readFileSync('expr.txt','utf8');
+let data = [];
+let expr = fs.readFileSync('expr.txt','utf8');
 if(expr.trim().substring(0,20) == 'eval(unescape(escape') {
 	console.log('Optimizing...');
 	expr = expr.trim().replace(
-		/^eval\(unescape\(escape`(.*?)`.replace\(\/u\(\.\.\)\/g,["']\$1%["']\)\)\)$/,
+		/^eval\(unescape\(escape`([^]*?)`.replace\(\/u\(\.\.\)\/g,["']\$1%["']\)\)\)$/,
 		(match, m1) => unescape(escape(m1).replace(/u(..)/g, '$1%')));
 	fs.writeFileSync('expr_optimized.txt',expr,'utf8');
 	console.log('Optimized version saved as expr_optimized.txt');
@@ -44,26 +45,41 @@ if(upscale > 0 && upscale !== 1) {
 	expr = 't/='+upscale+','+expr;
 	console.log('Upscaled x'+upscale+' (sample rate = '+sampleRate+')');
 }
+function decideAutoStereo() {
+	let fakeWindow = {};
+	const mathNames = Object.getOwnPropertyNames(Math);
+	const mathProps = mathNames.map((prop) => {
+		return Math[prop];
+	});
+	mathNames.push('int','window');
+	mathProps.push(Math.floor,fakeWindow);
+	const prefunc = new Function(...mathNames, 't', 'return 0,'+expr);
+	const func = prefunc.bind(null,...mathProps);
+	const result = func(0);
+	stereo = Array.isArray(result);
+}
+if(autoStereo) decideAutoStereo();
+let length = tLength > 0 ? tLength : seconds*sampleRate;
 if(stereo) {
-	seconds *= 2;
+	length *= 2;
 	expr = 't/=2,'+expr;
 }
-var length = tLength > 0 ? tLength : seconds*sampleRate;
-var workerArray = [];
-var parts = [];
-var part = length/workers;
-var percents = [0,0,0,0];
+let workerArray = [];
+let parts = [];
+const part = length/workers;
+let percents = [0,0,0,0];
+
 async function process() {
 	console.log('Processing...\nProgress:\nWorkers:');
 	console.time('Processing');
-	var workersFinished = 0;
-	for (var i = 0; i<workers; i++) {
+	let workersFinished = 0;
+	for (let i = 0; i<workers; i++) {
 		workerArray.push(new Worker('./worker',{argv:[part*i,part*(i+1),i+1],workerData:{sampleRate,reportEvery,type,expr,stereo,skipNaNs}}));
 		workerArray[workerArray.length-1].on('message',m=>{
 			if(typeof m === 'string') {
 				if(m.endsWith('%')) {
-					let d = m.split(';');
-					let number = parseInt(d[0]);
+					const d = m.split(';');
+					const number = parseInt(d[0]);
 					percents[number-1] = parseFloat(d[1].substring(0,d[1].length-1));
 					let percentage = 0;
 					percents.forEach(workerPercentage=> percentage += workerPercentage/workers);
@@ -76,7 +92,7 @@ async function process() {
 		workerArray[workerArray.length-1].on('exit',()=>{
 			workersFinished++;
 			if(workersFinished == workers) {
-				console.log('\x1b[2FProgress: %s 100.0\%\nWorkers : %d/%d\n                                        \x1b[1F',progressBar(100),workersFinished,workers)
+				console.log('\x1b[2FProgress: %s 100.0\%\nWorkers : %d/%d\n\x1b[1F',progressBar(100),workersFinished,workers)
 				console.timeEnd('Processing');
 				console.log('Merging...');
 				let partCount = 0;
@@ -98,7 +114,7 @@ async function process() {
 								console.log('Invalid sample found at '+num);
 							}
 						}
-						var spliced = data.splice(num,data.length-num+1);
+						const spliced = data.splice(num,data.length-num+1);
 						if(num==-1) console.log('No invalid samples were found'); else console.log('Removed '+spliced.length+' sample(s).');
 						break;
 					case 3:
@@ -123,17 +139,17 @@ async function process() {
 				}
 				if(bits == 16) {
 					console.log('Converting to 16 bits...');
-					var newData = [];
+					let newData = [];
 					for(let o = 0; o < data.length; o++) {
-						let the = (data[o] - 128) << 8;
+						const the = (data[o] - 128) << 8;
 						newData[o*2] = convertIt(the,0);
 						newData[o*2+1] = convertIt(the,1);
 					}
 					data = newData;
 				} else if(bits != 8) console.log('Invalid amount of bits, defaulting to 8. (no change)');
 				console.log('Writing...');
-				var the = new pcm({channels: stereo?2:1, rate: waveResampler?resample:sampleRate, depth: bits===16?16:8});
-				var wave = the.toWav(data);
+				const the = new pcm({channels: stereo?2:1, rate: waveResampler?resample:sampleRate, depth: bits===16?16:8});
+				const wave = the.toWav(data);
 				fs.writeFileSync('out.wav',Buffer.from(wave));
 			}
 		});

@@ -22,7 +22,7 @@ if(isMainThread) { // Safegaurd against running this file instead of cabbr.js
 		for (var t = range[0]; t<range[1]; t++) {
 			var res = NaN;
 			try {
-				res = +func(+t)
+				res = func(+t)
 			} catch (error) {
 				console.log('Error at %d: %s\x1b[1F',t,error.message);
 			}
@@ -30,29 +30,29 @@ if(isMainThread) { // Safegaurd against running this file instead of cabbr.js
 			if(stereo) {
 				switch(type) {
 					case 0:
-						data[t] = res[0];
-						data[t+1] = res[1];
+						data[t] = +res[0];
+						data[t+1] = +res[1];
 						break;
 					case 1:
-						data[t] = res[0]+128;
-						data[t+1] = res[1]+128;
+						data[t] = +res[0]+128;
+						data[t+1] = +res[1]+128;
 						break;
 					case 2:
-						data[t] = Math.max(Math.min(res[0],1),-1)*127+127;
-						data[t+1] = Math.max(Math.min(res[1],1),-1)*127+127;
+						data[t] = Math.max(Math.min(+res[0],1),-1)*127+127;
+						data[t+1] = Math.max(Math.min(+res[1],1),-1)*127+127;
 						break;
 				}
 				t++;
 			} else {
 				switch(workerData.type) {
 					case 0:
-						data[t] = res;
+						data[t] = +res;
 						break;
 					case 1:
-						data[t] = res+128;
+						data[t] = +res+128;
 						break;
 					case 2:
-						data[t] = Math.max(Math.min(res,1),-1)*127+127;
+						data[t] = Math.max(Math.min(+res,1),-1)*127+127;
 						break;
 				}
 			}

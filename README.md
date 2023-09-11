@@ -3,19 +3,20 @@
 # How to use
 Download the repository and extract it somewhere. People that have `git` installed can just do `git clone https://github.com/cabfile/cabbr.git .`
 
-Now install the `ini` package by doing `npm i ini`, and if you want to resample audio, also do `npm i wave-resampler`.
+~~Now install the `ini` package by doing `npm i ini`, and if you want to resample audio, also do `npm i wave-resampler`.~~ (As of the auto stereo update these are already done for convinience. *Credit to these npm packages' creators!*)
 
-After doing that, rename sample_config.ini into config.ini. In it you can edit the settings of the renderer, like the type of expression (currently only unsigned bytebeat, signed bytebeat, and floatbeat are supported), and the length of the resulting .wav file. It should look like this (the comments can differ):
+After doing that, open config.ini. In it you can edit the settings of the renderer, like the type of expression (currently only unsigned bytebeat, signed bytebeat, and floatbeat are supported), and the length of the resulting .wav file. It should look like this (the comments can differ):
 ```ini
 [General]
 ; 0 = bytebeat, 1 = signed bytebeat, 2 = floatbeat
 type=0
-; whether the expression returns an array that contains data on left and right channels
+; whether the expression returns an array that contains data on left and right channels. Ignore if autoStereo is on
 stereo=false
 ; how long should the output be
 seconds=30
 ; original sample rate
 sampleRate=8000
+
 [Quality]
 ; quality upscale multiplier
 ; examples:
@@ -23,17 +24,22 @@ sampleRate=8000
 ; 5.5125 = 8000 -> 44100
 ; 1.378125 = 8000 -> 11025, 32000 -> 44100
 upscale=1
-; values higher than 0 enable resampling (make sure to install the wave-resampler package), this is the target sample rate (upscale is not ignored)
+; values higher than 0 enable resampling, this is the target sample rate (upscale is not ignored)
 resample=0
 ; can be either point, linear, cubic or sinc (point is generally the best, for sine waves and such use linear)
 resampleMethod=point
 ; the amount of bits in the result, currently only 8 and 16 are supported (16 is slightly broken)
 bits=8
+
+
 [Advanced]
 ; alternative length constant (based on the t value itself), seconds is ignored if not 0
 tLength=0
-; the amount of workers that will be working simultaneously (to speed up the process), set to 1 for expressions with a reverb function (or those that dont use t)
+; the amount of workers that will be working simultaneously (to speed up the process), set to 1 for expressions with a reverb function (or those that dont use a fake t). Set to "max" to use the number of CPU cores availible
 workers=1
+; Whether to enforce automatic stereo detection. Mainly added for the renderer discord bot to avoid silence. Turn this on if you don't want to worry about a stereo track or not
+autoStereo=1
+
 [Misc]
 ; 0.1 - report every 10th second, 1 - report every second, 2 - report every half second, etc
 reportEvery=0.1

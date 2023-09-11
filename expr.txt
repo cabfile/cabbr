@@ -1,0 +1,6 @@
+// Put your bytebeat code into this file.
+// Example song uses code from https://www.reddit.com/r/bytebeat/comments/14do1q3/hydrogen_fucker/
+[ 
+    (t/2/(4+(t>>13&3))*128|t>>(t>>12&15))+4E5/(t&4095)|t>>4,
+    (t/2/(4+(t>>14&3))*128|t>>(t>>13&15))+4E5/(t&4095)|t>>5
+]
