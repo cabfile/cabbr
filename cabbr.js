@@ -19,7 +19,7 @@ let skipNaNs = false;
 	upscale = parseFloat(upscale);
 	resample = parseInt(resample);
 	tLength = parseInt(tLength);
-	workers = workers=='max'?(console.log('Using CPU core count: %d workers',cpuCores),cpuCores):parseInt(workers);
+	workers = workers=='max'?(cpuCores?(console.log('Using CPU core count: %d workers',cpuCores),cpuCores):(console.log('The "max" settings requires at least Node.JS v18.14.0. Using 1 worker'),1)):parseInt(workers);
 	reportEvery = parseFloat(reportEvery);
 	invalidSamples = parseInt(invalidSamples);
 	bits = parseInt(bits);
@@ -92,7 +92,7 @@ async function process() {
 		workerArray[workerArray.length-1].on('exit',()=>{
 			workersFinished++;
 			if(workersFinished == workers) {
-				console.log('\x1b[2FProgress: %s 100.0\%\nWorkers : %d/%d\n\x1b[1F',progressBar(100),workersFinished,workers)
+				console.log('\x1b[2FProgress: %s 100.0\%\nWorkers : %d/%d\n                                        \x1b[1F',progressBar(100),workersFinished,workers);
 				console.timeEnd('Processing');
 				console.log('Merging...');
 				let partCount = 0;
@@ -102,9 +102,6 @@ async function process() {
 					console.log('Part #'+partCount+' merged');
 				});
 				switch(invalidSamples) {
-					case 1:
-						console.log("Mode 1; no invalid sample check")
-						break;
 					case 2:
 						let num = -1;
 						console.log('Searching for an invalid sample...');
@@ -134,7 +131,25 @@ async function process() {
 				}
 				if(waveResampler) {
 					console.log('Resampling...');
-					data = [...waveResampler.resample(data, sampleRate, resample,{method:resampleMethod,LPF:false})];
+					if(stereo) {
+						var ch1 = [];
+						var ch2 = [];
+						for(let o = 0; o < data.length; o+=2) {
+							ch1.push(data[o]);
+							ch2.push(data[o+1]);
+						}
+						console.log('Left ear...');
+						ch1 = [...waveResampler.resample(ch1, sampleRate, resample,{method:resampleMethod,LPF:false})];
+						console.log('Right ear...');
+						ch2 = [...waveResampler.resample(ch2, sampleRate, resample,{method:resampleMethod,LPF:false})];
+						console.log('Merging channels...');
+						var m = [];
+						data = [];
+						for(let o = 0; o < ch1.length; o++) {
+							data.push(ch1[o]);
+							data.push(ch2[o]);
+						}
+					} else data = [...waveResampler.resample(data, sampleRate, resample,{method:resampleMethod,LPF:false})];
 					console.log('Resampled from '+sampleRate+'hz to '+resample+'hz sample rate');
 				}
 				if(bits == 16) {
@@ -158,7 +173,7 @@ async function process() {
 process();
 
 function progressBar(percentage) {
-	return '\x1b[106;30m['+(''.padEnd((percentage/100)*60,'#').padEnd(60,'.').replaceAll('#','\x1b[42;32m#\x1b[0m').replaceAll('.','\x1b[41;31m.\x1b[0m'))+'\x1b[106;30m]\x1b[0m'
+	return '\x1b[106;30m['+(''.padEnd((percentage/100)*60,'#').padEnd(60,'.').replaceAll('#','\x1b[42;32m#\x1b[0m').replaceAll('.','\x1b[41;31m.\x1b[0m'))+'\x1b[106;30m]\x1b[0m';
 }
 
 function convertIt(int16,num) {
