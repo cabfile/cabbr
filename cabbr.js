@@ -1,12 +1,11 @@
-console.log('Loading...');
-var fs = require('fs');
-var ini = require('ini');
-var os = require('os');
-var cpuCores = os.availableParallelism ? os.availableParallelism() : undefined;
-var config = ini.parse(fs.readFileSync('./config.ini', 'utf-8'));
+const fs = require('fs');
+const ini = require('ini');
+const os = require('os');
+const cpuCores = os.availableParallelism ? os.availableParallelism() : undefined;
+const config = ini.parse(fs.readFileSync('./config.ini', 'utf-8'));
 
 // Get variables from ini
-var {type, stereo, seconds, sampleRate} = config.General;
+var {type, seconds, sampleRate} = config.General;
 var {upscale, resample, resampleMethod, bits} = config.Quality;
 var {tLength, workers} = config.Advanced;
 var {reportEvery, invalidSamples} = config.Misc;
@@ -14,7 +13,6 @@ var skipNaNs = false;
 
 (()=>{ // change variables into their proper types
 	type = parseInt(type);
-	stereo = Boolean(stereo);
 	seconds = parseFloat(seconds);
 	sampleRate = parseInt(sampleRate);
 	upscale = parseFloat(upscale);
@@ -26,7 +24,7 @@ var skipNaNs = false;
 	bits = parseInt(bits);
 	skipNaNs = invalidSamples == 1;
 })(); // this is so you can retract it
-var pcm = require('./pcm.js');
+const pcm = require('./pcm.js');
 const { Worker } = require('worker_threads');
 var waveResampler;
 if(resample > 0 && resample != sampleRate) waveResampler = require('wave-resampler');
@@ -35,7 +33,7 @@ var expr = fs.readFileSync('expr.txt','utf8');
 if(expr.trim().substring(0,20) == 'eval(unescape(escape') {
 	console.log('Optimizing...');
 	expr = expr.trim().replace(
-		/^eval\(unescape\(escape`(.*?)`.replace\(\/u\(\.\.\)\/g,["']\$1%["']\)\)\)$/,
+		/^eval\(unescape\(escape`([^]*?)`.replace\(\/u\(\.\.\)\/g,["']\$1%["']\)\)\)$/,
 		(match, m1) => unescape(escape(m1).replace(/u(..)/g, '$1%')));
 	fs.writeFileSync('expr_optimized.txt',expr,'utf8');
 	console.log('Optimized version saved as expr_optimized.txt');
@@ -43,23 +41,30 @@ if(expr.trim().substring(0,20) == 'eval(unescape(escape') {
 if(upscale > 0 && upscale !== 1) {
 	sampleRate *= upscale;
 	expr = 't/='+upscale+','+expr;
-	console.log('Upscaled x'+upscale+' (sample rate = '+sampleRate+')');
+	console.log('Upscaled x'+upscale+' (new sample rate: '+sampleRate+')');
 }
-if(stereo) {
-	seconds *= 2;
-	expr = 't/=2,'+expr;
-}
-var length = tLength > 0 ? tLength : seconds*sampleRate;
-var workerArray = [];
-var parts = [];
-var part = length/workers;
-var percents = [0,0,0,0];
+var stereo = false;
+var stereoTester = new Worker('./worker',{workerData:{stereoTest:true,expr}});
+stereoTester.on('message',m=>{
+	stereo = m;
+	if(m) {
+		console.log("Stereo detected");
+		seconds *= 2;
+		expr = 't/=2,'+expr;
+	}
+	process();
+});
 async function process() {
+	const length = tLength > 0 ? tLength : seconds*sampleRate;
+	var workerArray = [];
+	var parts = [];
+	var part = length/workers;
+	var percents = [0,0,0,0];
 	console.log('Processing...\nProgress:\nWorkers:');
 	console.time('Processing');
 	var workersFinished = 0;
 	for (var i = 0; i<workers; i++) {
-		workerArray.push(new Worker('./worker',{argv:[part*i,part*(i+1),i+1],workerData:{sampleRate,reportEvery,type,expr,stereo,skipNaNs}}));
+		workerArray.push(new Worker('./worker',{argv:[part*i,part*(i+1),i+1],workerData:{stereoTest:false,sampleRate,reportEvery,type,expr,stereo,skipNaNs}}));
 		workerArray[workerArray.length-1].on('message',m=>{
 			if(typeof m === 'string') {
 				if(m.endsWith('%')) {
@@ -77,7 +82,7 @@ async function process() {
 		workerArray[workerArray.length-1].on('exit',()=>{
 			workersFinished++;
 			if(workersFinished == workers) {
-				console.log('\x1b[2FProgress: %s 100.0\%\nWorkers : %d/%d\n                                        \x1b[1F',progressBar(100),workersFinished,workers);
+				console.log('\x1b[2FProgress: %s 100.0\%\nWorkers : %d/%d\n\x1b[1F',progressBar(100),workersFinished,workers);
 				console.timeEnd('Processing');
 				console.log('Merging...');
 				let partCount = 0;
@@ -141,7 +146,7 @@ async function process() {
 					console.log('Converting to 16 bits...');
 					var newData = [];
 					for(let o = 0; o < data.length; o++) {
-						let the = (data[o] - 128) << 8;
+						let the = Math.round(data[o]*256-32768);
 						newData[o*2] = convertIt(the,0);
 						newData[o*2+1] = convertIt(the,1);
 					}
@@ -155,7 +160,6 @@ async function process() {
 		});
 	}
 }
-process();
 
 function progressBar(percentage) {
 	return '\x1b[106;30m['+(''.padEnd((percentage/100)*60,'#').padEnd(60,'.').replaceAll('#','\x1b[42;32m#\x1b[0m').replaceAll('.','\x1b[41;31m.\x1b[0m'))+'\x1b[106;30m]\x1b[0m';

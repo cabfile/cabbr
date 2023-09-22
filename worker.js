@@ -5,7 +5,7 @@ if(isMainThread) { // Safeguard against running this file instead of cabbr.js
 	console.log('You\'re doing it wrong: Open cabbr.js instead');
 	process.exit(0);
 } else {
-	var {sampleRate, reportEvery, stereo, expr, type, skipNaNs} = workerData;
+	var {stereoTest, sampleRate, reportEvery, stereo, expr, type, skipNaNs} = workerData;
 	var fakeWindow = {};
 	var mathNames = Object.getOwnPropertyNames(Math);
 	var mathProps = mathNames.map((prop) => {
@@ -17,8 +17,8 @@ if(isMainThread) { // Safeguard against running this file instead of cabbr.js
 	var func = prefunc.bind(null,...mathProps);
 	var range = [parseInt(process.argv[2]),parseInt(process.argv[3])];
 	var data = [];
-	func(0);
-	(async()=>{
+	var a = func(0);
+	if(!stereoTest) (async()=>{
 		for (var t = range[0]; t<range[1]; t++) {
 			var res = NaN;
 			try {
@@ -59,13 +59,6 @@ if(isMainThread) { // Safeguard against running this file instead of cabbr.js
 			if(reportEvery > 0 && t%Math.round(sampleRate/reportEvery)==stereo) parentPort.postMessage(process.argv[4]+';'+((t-range[0])/(range[1]-range[0])*100)+'%');
 		}
 		parentPort.postMessage([parseInt(process.argv[4])-1,data]);
-		console.log('Worker #'+process.argv[4]+' is done! (%s)\x1b[1F',prettyPrintSize(data.length));
 	})();
-}
-
-function prettyPrintSize(num) {
-	if(num < 1024) return num+'b';
-	else if(num < 1048576) return Math.round(num/1024)+'kb';
-	else if(num < 1073741824) return Math.round(num/1048576)+'mb';
-	else return Math.round(num/1073741824)+'gb';
+	else parentPort.postMessage(Array.isArray(a));
 }
