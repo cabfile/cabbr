@@ -1,23 +1,22 @@
 const fs = require('fs');
-const ini = require('ini');
 const os = require('os');
 const cpuCores = os.availableParallelism ? os.availableParallelism() : undefined;
-const config = ini.parse(fs.readFileSync('./config.ini', 'utf-8'));
+const config = parseINIString((fs.readFileSync('./config.ini', 'utf-8')));
 
 // Get variables from ini
-var {type, seconds, sampleRate} = config.General;
+var {mode, duration, durationType, sampleRate} = config.General;
 var {upscale, resample, resampleMethod, bits} = config.Quality;
-var {tLength, workers} = config.Advanced;
-var {reportEvery, invalidSamples} = config.Misc;
+var {workers, invalidSamples} = config.Advanced;
+var {reportEvery} = config.Misc;
 var skipNaNs = false;
 
 (()=>{ // change variables into their proper types
-	type = parseInt(type);
-	seconds = parseFloat(seconds);
+	mode = parseInt(mode);
+	duration = parseFloat(duration);
+	durationType = parseInt(durationType);
 	sampleRate = parseInt(sampleRate);
 	upscale = parseFloat(upscale);
 	resample = parseInt(resample);
-	tLength = parseInt(tLength);
 	workers = workers=='max'?(cpuCores?(console.log('Using CPU core count: %d workers',cpuCores),cpuCores):(console.log('The "max" settings requires at least Node.JS v18.14.0. Using 1 worker'),1)):parseInt(workers);
 	reportEvery = parseFloat(reportEvery);
 	invalidSamples = parseInt(invalidSamples);
@@ -27,35 +26,44 @@ var skipNaNs = false;
 const pcm = require('./pcm.js');
 const { Worker } = require('worker_threads');
 var waveResampler;
-if(resample > 0 && resample != sampleRate) waveResampler = require('wave-resampler');
+if(resample > 0 && resample != sampleRate) {
+	try {
+		waveResampler = require('wave-resampler');
+	} catch(e) {
+		console.log("Resampling is enabled but you don't seem to have wave-resampler installed.");
+		console.log('Install it by entering "npm i wave-resampler".');
+		console.log("In the mean time, the audio will not be resampled.");
+		waveResampler = null;
+	}
+}
 var data = [];
 var expr = fs.readFileSync('expr.txt','utf8');
 if(expr.trim().substring(0,20) == 'eval(unescape(escape') {
 	console.log('Optimizing...');
 	expr = expr.trim().replace(
-		/^eval\(unescape\(escape`([^]*?)`.replace\(\/u\(\.\.\)\/g,["']\$1%["']\)\)\)$/,
+		/^eval\(unescape\(escape(?:`|\('|\("|\(`)(.*?)(?:`|'\)|"\)|`\)).replace\(\/u\(\.\.\)\/g,["'`]\$1%["'`]\)\)\)$/,
 		(match, m1) => unescape(escape(m1).replace(/u(..)/g, '$1%')));
 	fs.writeFileSync('expr_optimized.txt',expr,'utf8');
 	console.log('Optimized version saved as expr_optimized.txt');
 }
 if(upscale > 0 && upscale !== 1) {
-	sampleRate *= upscale;
-	expr = 't/='+upscale+','+expr;
-	console.log('Upscaled x'+upscale+' (new sample rate: '+sampleRate+')');
+	if(mode === 3) {
+		console.log("Upscaling is unavailable in Funcbeat");
+	} else {
+		sampleRate *= upscale;
+		expr = 't/='+upscale+','+expr;
+		console.log('Upscaled x'+upscale+' (new sample rate: '+sampleRate+')');
+	}
 }
 var stereo = false;
-var stereoTester = new Worker('./worker',{workerData:{stereoTest:true,expr}});
+var stereoTester = new Worker('./worker',{workerData:{stereoTest:true,expr,mode}});
 stereoTester.on('message',m=>{
 	stereo = m;
-	if(m) {
-		console.log("Stereo detected");
-		seconds *= 2;
-		expr = 't/=2,'+expr;
-	}
+	if(m) console.log("Stereo detected");
 	process();
 });
 async function process() {
-	const length = tLength > 0 ? tLength : seconds*sampleRate;
+	const length = durationType === 1 ? duration : duration*sampleRate;
 	var workerArray = [];
 	var parts = [];
 	var part = length/workers;
@@ -64,7 +72,7 @@ async function process() {
 	console.time('Processing');
 	var workersFinished = 0;
 	for (var i = 0; i<workers; i++) {
-		workerArray.push(new Worker('./worker',{argv:[part*i,part*(i+1),i+1],workerData:{stereoTest:false,sampleRate,reportEvery,type,expr,stereo,skipNaNs}}));
+		workerArray.push(new Worker('./worker',{argv:[part*i,part*(i+1),i+1],workerData:{stereoTest:false,sampleRate,reportEvery,mode,expr,stereo,skipNaNs}}));
 		workerArray[workerArray.length-1].on('message',m=>{
 			if(typeof m === 'string') {
 				if(m.endsWith('%')) {
@@ -172,3 +180,5 @@ function convertIt(int16,num) {
 		return Math.floor(int16/256)%256;
 	}
 }
+
+function parseINIString(t){var n={section:/^\s*\[\s*([^\]]*)\s*\]\s*$/,param:/^\s*([^=]+?)\s*=\s*(.*?)\s*$/,comment:/^\s*;.*$/},a={},t=t.split(/[\r\n]+/),e=null;return t.forEach(function(t){var s;n.comment.test(t)||(n.param.test(t)?(s=t.match(n.param),e?a[e][s[1]]=s[2]:a[s[1]]=s[2]):n.section.test(t)?(s=t.match(n.section),a[s[1]]={},e=s[1]):0==t.length&&(e=e&&null))}),a}
