@@ -46,7 +46,7 @@ Make a text file named expr.txt, and put your expression there. Now run the rend
 ## How to use (on mobile)
 Get [Termux](https://f-droid.org/ru/packages/com.termux/). Do NOT download it from Google Play, as that version is old and unsupported.
 # How does it work?
-First, it gives each worker (the amount of which is set in the config, they are the ones actually rendering) some settings, and make them render a specific part of the expression. So if you have 4 workers, each will render 1/4 of it. After all workers are done, it merges their parts, looks for NaN samples (if invalidSamples isnt 0 or 1), resamples the audio (if resample isnt 0 or equal to the sample rate, VERY broken with stereo enabled), and upgrades the audio to 16-bit (if bits is equal to 16). Lastly, it writes everything it has done into out.wav.
+First, it gives each worker (the amount of which is set in the config, they are the ones actually rendering) some settings, and make them render a specific part of the expression. So if you have 4 workers, each will render 1/4 of it. After all workers are done, it merges their parts, looks for NaN samples (if invalidSamples isnt 0 or 1), resamples the audio (if resample isnt 0 or equal to the sample rate), and upgrades the audio to 16-bit (if bits is equal to 16). Lastly, it writes everything it has done into out.wav.
 # When not to use Workers
 When the expression:
 * has persisting variables that change, e.g. reverb/echo - they will be reset each time a new part is reached
