@@ -36,11 +36,14 @@ bits=8
 workers=1
 ; what to do with invalid (NaN) samples: 0 - nothing (set to 0), 1 - skip, 2 - end the audio, 3 - repeat last sample
 invalidSamples=0
-[Misc]
-; 0.1 - report every 10 rendered seconds, 1 - report every second, 2 - report every half second, etc
+[Visual]
+; 0 - absolutely no console output (except warnings/errors), 1 - like 2 but with no progress bar or worker status, 2 - default
+; for maximum speed use 0
+fancy=2
+; 0.1 - report every 10 rendered seconds, 1 - report every second, 2 - report every half second, etc. ignored when fancy != 2
 reportEvery=0.1
 ```
-If you want to imitate [StephanShi's composer](https://github.com/SthephanShinkufag/bytebeat-composer) (or its forks), set `resample` to 48000 and `invalidSamples` to 3.
+If you want to imitate [StephanShi's composer](https://github.com/SthephanShinkufag/bytebeat-composer) (or its forks), set `resample` to 48000, `resampleMethod` to `point`, and `invalidSamples` to 3.
 
 Make a text file named expr.txt, and put your expression there. Now run the renderer (with `node cabbr`), and a file named out.wav should appear. Then you can open it with any audio player you want.
 ## How to use (on mobile)
