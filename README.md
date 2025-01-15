@@ -1,5 +1,5 @@
 # Cpu-Accelerated ByteBeat Renderer
-**CABBR** is a powerful renderer for [Bytebeat](http://canonical.org/~kragen/bytebeat/) expressions. It uses Node.JS's Workers to speed up the process (which is why its CPU-accelerated) and [pcm.js](https://github.com/pdeschen/pcm.js/) to make .wav files.
+**CABBR** is a fast and powerful renderer for [Bytebeat](http://canonical.org/~kragen/bytebeat/) expressions. It uses Node.JS's Workers to speed up the process (which is why its CPU-accelerated) and [pcm.js](https://github.com/pdeschen/pcm.js/) to make .wav files.
 # How to use
 Make sure you have Node.JS and NPM (or any other compatible package manager) installed.
 
