@@ -48,9 +48,10 @@ If you want to imitate [StephanShi's composer](https://github.com/SthephanShinku
 Make a text file named expr.txt, and put your expression there. Now run the renderer (with `node cabbr`), and a file named out.wav should appear. Then you can open it with any audio player you want.
 ## How to use (on mobile)
 Get [Termux](https://f-droid.org/ru/packages/com.termux/). Do NOT download it from Google Play, as that version is old and unsupported.
+
+Installing Node.JS is done with `pkg install nodejs`.
 # How does it work?
 First, it gives each worker (the amount of which is set in the config, they are the ones actually rendering) some settings, and make them render a specific part of the expression. So if you have 4 workers, each will render 1/4 of it. After all workers are done, it merges their parts, looks for NaN samples (if invalidSamples isnt 0 or 1), resamples the audio (if resample isnt 0 or equal to the sample rate), and upgrades the audio to 16-bit (if bits is equal to 16). Lastly, it writes everything it has done into out.wav.
 # When not to use Workers
-When the expression:
-* has persisting variables that change, e.g. reverb/echo - they will be reset each time a new part is reached
-* * uses its own `t` - the entire song will reset each time a new part is reached
+* The expression has persisting variables that change, e.g. reverb/echo - as they will be reset each time a new part is reached, which isn't that big of a deal, but still undesirable.
+* The expression uses its own `t` - the entire song will reset each time a new part is reached.
