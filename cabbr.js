@@ -65,7 +65,7 @@ stereoTester.on('message',m=>{
 		process.exit(1);
 	}
 	stereo = m[0];
-	if(m[1]) consolelog("Stereo detected");
+	if(m[0]) consolelog("Stereo detected");
 	proc();
 });
 async function proc() {
