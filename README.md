@@ -1,15 +1,15 @@
 # Cpu-Accelerated ByteBeat Renderer
-**CABBR** is a fast and powerful renderer for [Bytebeat](http://canonical.org/~kragen/bytebeat/) expressions. It uses Node.JS's Workers to speed up the process (which is why its CPU-accelerated) and [pcm.js](https://github.com/pdeschen/pcm.js/) to make .wav files.
+**CABBR** is a fast and powerful renderer for [Bytebeat](http://canonical.org/~kragen/bytebeat/) expressions. It uses Node.JS's Workers to speed up the process (which is why it's CPU-accelerated) and [pcm.js](https://github.com/pdeschen/pcm.js/) to make .wav files.
 
 Runs on as early as Node.JS v10.5.0 with the `--experimental-worker` parameter or v11.7.0 without. Funnily enough, it's about twice as fast in v11.7.0 than modern versions!
 # How to use
 Make sure you have Node.JS and NPM (or any other compatible package manager) installed.
 
-Download the repository and extract it somewhere. People that have `git` installed can just run `git clone https://github.com/cabfile/cabbr.git .`
+Download the repository and extract it somewhere. If you have `git` installed you can just run `git clone https://github.com/cabfile/cabbr.git .`
 
 If you want to use the audio resampling feature, run `npm i wave-resampler`.
 
-After doing that, rename example_config.ini into config.ini. In it you can edit the settings of the renderer, such as the mode and the length of the resulting .wav file. It should look like this (the comments can differ):
+After doing that, rename example_config.ini into config.ini. In it you can edit the settings of the renderer, such as the mode and the length of the resulting .wav file. It should look like this:
 ```ini
 [General]
 ; 0 = bytebeat, 1 = signed bytebeat, 2 = floatbeat, 3 = funcbeat
@@ -45,15 +45,25 @@ fancy=2
 ; 0.1 - report every 10 rendered seconds, 1 - report every second, 2 - report every half second, etc. ignored when fancy != 2
 reportEvery=0.1
 ```
-If you want to imitate [StephanShi's composer](https://github.com/SthephanShinkufag/bytebeat-composer) (or its forks), set `resample` to 48000, `resampleMethod` to `point`, and `invalidSamples` to 3.
+If you want to imitate [SthephanShi's composer](https://github.com/SthephanShinkufag/bytebeat-composer) (or its forks), set `resample` to 48000, `resampleMethod` to `point`, and `invalidSamples` to 3.
 
-Make a text file named expr.txt, and put your expression there. Now run the renderer (with `node cabbr`), and a file named out.wav should appear. Then you can open it with any audio player you want.
+Make a text file named expr.txt and put your expression there. Now run the renderer (with `node cabbr`), and a file named out.wav should appear. Then you can open it with any audio player you want.
 ## How to use (on mobile)
 Get [Termux](https://f-droid.org/ru/packages/com.termux/). Do NOT download it from Google Play, as that version is old and unsupported.
 
 Installing Node.JS is done with `pkg install nodejs`.
 # How does it work?
-First, it gives each worker (the amount of which is set in the config, they are the ones actually rendering) some settings, and make them render a specific part of the expression. So if you have 4 workers, each will render 1/4 of it. After all workers are done, it merges their parts, looks for NaN samples (if invalidSamples isnt 0 or 1), resamples the audio (if resample isnt 0 or equal to the sample rate), and upgrades the audio to 16-bit (if bits is equal to 16). Lastly, it writes everything it has done into out.wav.
+First, it does an initial test run, where it determines if the input expression is valid and if it's stereo or not.
+
+Then, it gives each worker (the amount of which is set in the config) some settings, and makes them render a specific portion of the expression. So if you have 4 workers, each will render 1/4th of it.
+
+After all workers are done, it:
+1. Merges their parts
+2. Looks for NaN samples (if invalidSamples isnt 0 or 1)
+3. Resamples the audio (if resample isnt 0 or equal to the sample rate)
+4. Upgrades the audio to 16-bit (if bits is equal to 16).
+
+Lastly, it writes everything it has done into out.wav.
 # When not to use Workers
 * The expression has persisting variables that change, e.g. reverb/echo - as they will be reset each time a new part is reached, which isn't that big of a deal, but still undesirable.
 * The expression uses its own `t` - the entire song will reset each time a new part is reached.
