@@ -10,21 +10,19 @@ var {workers, invalidSamples} = config.Advanced;
 var {fancy, reportEvery} = config.Visual;
 var skipNaNs = false;
 var consolelog = fancy > 0 ? console.log : ()=>{};
+mode = parseInt(mode);
+duration = parseFloat(duration);
+durationType = parseInt(durationType);
+sampleRate = parseInt(sampleRate);
+upscale = parseFloat(upscale);
+resample = parseInt(resample);
+workers = workers=='max'?(cpuCores?(consolelog('Using CPU core count: %d workers',cpuCores),cpuCores):(console.warn('The "max" settings requires at least Node.JS v18.14.0. Using 1 worker'),1)):parseInt(workers);
+reportEvery = parseFloat(reportEvery);
+invalidSamples = parseInt(invalidSamples);
+bits = parseInt(bits);
+fancy = parseInt(fancy);
+skipNaNs = invalidSamples == 1;
 
-(()=>{ // change variables into their proper types
-	mode = parseInt(mode);
-	duration = parseFloat(duration);
-	durationType = parseInt(durationType);
-	sampleRate = parseInt(sampleRate);
-	upscale = parseFloat(upscale);
-	resample = parseInt(resample);
-	workers = workers=='max'?(cpuCores?(consolelog('Using CPU core count: %d workers',cpuCores),cpuCores):(console.warn('The "max" settings requires at least Node.JS v18.14.0. Using 1 worker'),1)):parseInt(workers);
-	reportEvery = parseFloat(reportEvery);
-	invalidSamples = parseInt(invalidSamples);
-	bits = parseInt(bits);
-	fancy = parseInt(fancy);
-	skipNaNs = invalidSamples == 1;
-})(); // this is so you can retract it
 const pcm = require('./pcm.js');
 const { Worker } = require('worker_threads');
 var waveResampler;
@@ -58,7 +56,7 @@ if(upscale > 0 && upscale !== 1) {
 	}
 }
 var stereo = false;
-var stereoTester = new Worker('./worker',{workerData:{stereoTest:true,expr,mode}});
+var stereoTester = new Worker(__dirname+'/worker.js',{workerData:{stereoTest:true,expr,mode}});
 stereoTester.on('message',m=>{
 	if(!m[1]) {
 		console.error("Input expression is invalid. Aborting.");
@@ -78,7 +76,7 @@ async function proc() {
 	if(fancy > 0) console.time('Processing');
 	var workersFinished = 0;
 	for (var i = 0; i<workers; i++) {
-		workerArray.push(new Worker('./worker',{argv:[part*i,part*(i+1),i+1],workerData:{stereoTest:false,sampleRate,reportEvery,mode,expr,stereo,skipNaNs,fancy}}));
+		workerArray.push(new Worker(__dirname+'/worker.js',{argv:[part*i,part*(i+1),i+1],workerData:{stereoTest:false,sampleRate,reportEvery,mode,expr,stereo,skipNaNs,fancy}}));
 		workerArray[workerArray.length-1].on('message',m=>{
 			if(typeof m === 'string') {
 				if(m.endsWith('%')) {
@@ -174,7 +172,7 @@ async function proc() {
 }
 
 function progressBar(percentage) {
-	return '\x1b[106;30m['+(''.padEnd((percentage/100)*60,'#').padEnd(60,'.').replaceAll('#','\x1b[42;32m#\x1b[0m').replaceAll('.','\x1b[41;31m.\x1b[0m'))+'\x1b[106;30m]\x1b[0m';
+	return '\x1b[106;30m['+(''.padEnd((percentage/100)*60,'#').padEnd(60,'.').replace(/#/g,'\x1b[42;32m#\x1b[0m').replace(/\./g,'\x1b[41;31m.\x1b[0m'))+'\x1b[106;30m]\x1b[0m';
 }
 
 function convertIt(int16,num) {
