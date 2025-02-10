@@ -56,7 +56,7 @@ if(upscale > 0 && upscale !== 1) {
 	}
 }
 var stereo = false;
-var stereoTester = new Worker(__dirname+'/worker.js',{workerData:{stereoTest:true,expr,mode}});
+var stereoTester = new Worker(__dirname+'/worker.js',{workerData:{stereoTest:true,expr,mode,sampleRate}});
 stereoTester.on('message',m=>{
 	if(!m[1]) {
 		console.error("Input expression is invalid. Aborting.");
@@ -76,7 +76,7 @@ async function proc() {
 	if(fancy > 0) console.time('Processing');
 	var workersFinished = 0;
 	for (var i = 0; i<workers; i++) {
-		workerArray.push(new Worker(__dirname+'/worker.js',{argv:[part*i,part*(i+1),i+1],workerData:{stereoTest:false,sampleRate,reportEvery,mode,expr,stereo,skipNaNs,fancy}}));
+		workerArray.push(new Worker(__dirname+'/worker.js',{workerData:{stereoTest:false,sampleRate,reportEvery,mode,expr,stereo,skipNaNs,fancy,range:[part*i,part*(i+1)],wnum:i+1}}));
 		workerArray[workerArray.length-1].on('message',m=>{
 			if(typeof m === 'string') {
 				if(m.endsWith('%')) {
