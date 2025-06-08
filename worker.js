@@ -16,11 +16,11 @@ if(isMainThread) { // Safeguard against running this file instead of cabbr.js
 	var mode3 = mode == 3;
 	var prefunc = mode3 ? new Function(...mathNames, expr) : new Function(...mathNames, 't', 'return 0,'+expr);
 	var func = prefunc.bind(null,...mathProps);
-	var valid = true;
+	var error = null;
 	try {
 		var testRun = mode3 ? (func = func())(0,sampleRate) : func(0);
 	} catch(e) {
-		valid = false;
+		error = e;
 	}
 	if(!stereoTest) {
 		var {reportEvery, stereo, skipNaNs, fancy, range, wnum} = workerData;
@@ -147,5 +147,5 @@ if(isMainThread) { // Safeguard against running this file instead of cabbr.js
 		}
 		parentPort.postMessage([parseInt(wnum)-1,data]);
 	}
-	else parentPort.postMessage([Array.isArray(testRun),valid]);
+	else parentPort.postMessage([Array.isArray(testRun),error]);
 }

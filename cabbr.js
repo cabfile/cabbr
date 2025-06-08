@@ -58,8 +58,8 @@ if(upscale > 0 && upscale !== 1) {
 var stereo = false;
 var stereoTester = new Worker(__dirname+'/worker.js',{workerData:{stereoTest:true,expr,mode,sampleRate}});
 stereoTester.on('message',m=>{
-	if(!m[1]) {
-		console.error("Input expression is invalid. Aborting.");
+	if(m[1] !== null) {
+		console.error(m[1]);
 		process.exit(1);
 	}
 	stereo = m[0];
