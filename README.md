@@ -38,6 +38,8 @@ bits=8
 workers=1
 ; what to do with invalid (NaN) samples: 0 - nothing (set to 0), 1 - skip, 2 - end the audio, 3 - repeat last sample
 invalidSamples=0
+; set to 0 only if you know what you're doing
+safety=1
 [Visual]
 ; 0 - absolutely no console output (except warnings/errors), 1 - like 2 but with no progress bar or worker status, 2 - default
 ; for maximum speed use 0
