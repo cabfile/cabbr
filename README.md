@@ -3,7 +3,7 @@
 
 Runs on as early as Node.JS v10.5.0 with the `--experimental-worker` parameter or v11.7.0 without.
 > [!WARNING]
-> The renderer's safety mechanism only works in Node.js, and thus `safety` must be set to `0` in other runtimes.
+> The renderer's safety mechanism only works in Node.js, and thus `safety` must be set to `0` in other environments (like Deno or Bun).
 >
 > Do NOT feed CABBR arbitrary expressions (e.g. from an online form or Discord channel) if the mechanism is disabled.
 # How to use
@@ -71,5 +71,5 @@ After all workers are done, it:
 
 Lastly, it writes everything it has done into out.wav.
 # When not to use Workers
-* The expression has persisting variables that change, e.g. reverb/echo - as they will be reset each time a new part is reached, which isn't that big of a deal, but still undesirable.
-* The expression uses its own `t` - the entire song will reset each time a new part is reached.
+* The expression is stateful - or in other words has persisting variables that change, e.g. reverb/echo - as they will be reset each time a new part is reached, which can make the result sound strange.
+** If the expression uses its own `t` (for some incomprehensible reason), it will be completely reset each time a new part is reached.
