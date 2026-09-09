@@ -14,9 +14,10 @@ if(isMainThread) { // Safeguard against running this file instead of cabbr.js
 	mathNames.push('int','window');
 	mathProps.push(Math.floor,fakeWindow);
 	const mode3 = mode == 3;
+	let func = (mode3 ? new Function(...mathNames, expr) : new Function(...mathNames, 't', 'return 0,'+expr)).bind(null,...mathProps);
 	if(!stereoTest) {
 		const {reportEvery, stereo, skipNaNs, fancy, range, wnum} = workerData;
-		const func = (mode3 ? new Function(...mathNames, expr) : new Function(...mathNames, 't', 'return 0,'+expr)).bind(null,...mathProps);
+		if (mode3) func = func();  // funcbeat is nothing without this
 		const data = [];
 		const divisor = Math.floor(sampleRate/reportEvery);
 		const idk = (range[1]-range[0])/100;
@@ -128,7 +129,6 @@ if(isMainThread) { // Safeguard against running this file instead of cabbr.js
 		let error = null;
 		let testRun = null;
 		try {
-			const func = (mode3 ? new Function(...mathNames, expr) : new Function(...mathNames, 't', 'return 0,'+expr)).bind(null,...mathProps);
 			testRun = mode3 ? (func = func())(0,sampleRate) : func(0);
 		} catch(e) {
 			if(e instanceof SyntaxError || e instanceof ReferenceError || e instanceof TypeError) error = e;
