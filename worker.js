@@ -17,6 +17,11 @@ if(isMainThread) { // Safeguard against running this file instead of cabbr.js
 	if(!stereoTest) {
 		const {reportEvery, stereo, skipNaNs, fancy, range, wnum} = workerData;
 		const func = (mode3 ? new Function(...mathNames, expr) : new Function(...mathNames, 't', 'return 0,'+expr)).bind(null,...mathProps);
+		// run the function once. this is to initialize the arrays and state
+		// https://dollchan.net/btb/res/3.html#1907
+		try {
+			mode3 ? func(0 / sampleRate, sampleRate) : func(0);
+		} catch {}
 		const data = [];
 		const divisor = Math.floor(sampleRate/reportEvery);
 		const idk = (range[1]-range[0])/100;
