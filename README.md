@@ -72,4 +72,4 @@ After all workers are done, it:
 Lastly, it writes everything it has done into out.wav.
 # When not to use Workers
 * The expression is stateful - or in other words has persisting variables that change, e.g. reverb/echo - as they will be reset each time a new part is reached, which can make the result sound strange.
-** If the expression uses its own `t` (for some incomprehensible reason), it will be completely reset each time a new part is reached.
+  * If the expression uses its own `t` (for some incomprehensible reason), it will be completely reset each time a new part is reached.
