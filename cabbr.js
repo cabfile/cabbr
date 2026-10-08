@@ -1,7 +1,7 @@
 const fs = require('fs');
 const os = require('os');
 const nodeVer = process.versions.node.split('.').map(Number);
-const cpuCores = os.availableParallelism ? os.availableParallelism() : undefined;
+const cpuCores = os.availableParallelism ? os.availableParallelism() : os.cpus().length;
 const config = parseINIString((fs.readFileSync('./config.ini', 'utf-8')));
 
 // Get variables from ini
@@ -17,7 +17,7 @@ durationType = parseInt(durationType);
 sampleRate = parseInt(sampleRate);
 upscale = parseFloat(upscale);
 resample = parseInt(resample);
-workers = workers=='max'?(cpuCores?(consolelog('Using CPU core count: %d workers',cpuCores),cpuCores):(console.warn('The "max" setting requires at least Node.JS v18.14.0. Using 1 worker'),1)):parseInt(workers);
+workers = workers=='max'?(cpuCores?(consolelog('Using CPU core count: %d workers',cpuCores),cpuCores):(console.warn('Couldn\'t get CPU core count. Using 1 worker'),1)):parseInt(workers);
 reportEvery = parseFloat(reportEvery);
 invalidSamples = parseInt(invalidSamples);
 bits = parseInt(bits);
